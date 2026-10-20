@@ -108,6 +108,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean heroShown;
     private boolean animations;
     private boolean advancedEffects;
+    /** Launcher settings were opened from here; onResume checks whether a choice made there changed. */
+    private boolean launcherSettingsOpened;
     private TextView greeting;
     private View btnInputs;
     private TextView btnWifi;
@@ -502,8 +504,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean openLauncherSettingsIfAsked(Intent intent) {
         if (intent == null || !ACTION_LAUNCHER_SETTINGS.equals(intent.getAction())) return false;
         setIntent(new Intent(Intent.ACTION_MAIN));
-        startActivityForResult(new Intent(this, LauncherSettingsActivity.class), LAUNCHER_SETTINGS_REQUEST);
+        openLauncherSettings();
         return true;
+    }
+
+    private void openLauncherSettings() {
+        launcherSettingsOpened = true;
+        startActivityForResult(new Intent(this, LauncherSettingsActivity.class), LAUNCHER_SETTINGS_REQUEST);
     }
 
     /**
@@ -529,6 +536,23 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             registerReceiver(packageReceiver, packageFilter, Context.RECEIVER_NOT_EXPORTED);
         } else {
             registerReceiver(packageReceiver, packageFilter);
+        }
+    }
+
+    /**
+     * Back from Launcher settings. Leaving them with the Home button delivers no result (singleTask Home clears
+     * them from the task), so onActivityResult never sees the change; compare the choices here too. Not in
+     * onResume: opened from onNewIntent, the settings start while Home is still resuming.
+     */
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+        if (!launcherSettingsOpened) return;
+        launcherSettingsOpened = false;
+        Config now = Config.load(this);
+        if (now.columns != COLUMNS || now.animations != animations
+                || (now.animations && now.advancedEffects) != advancedEffects) {
+            recreate();
         }
     }
 
@@ -566,7 +590,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == LAUNCHER_SETTINGS_REQUEST && resultCode == RESULT_OK) recreate();
+        if (requestCode == LAUNCHER_SETTINGS_REQUEST && resultCode == RESULT_OK) {
+            launcherSettingsOpened = false;   // recreate() below already applies the choices
+            recreate();
+        }
     }
 
     /** Rebuilds the tiles (and the module cards), then puts focus back where it was. */
@@ -1958,8 +1985,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         View panel = getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
         LinearLayout rows = panel.findViewById(R.id.rows);
         PopupWindow popup = glassPopup(panel, (int) (200 * density));
-        addSettingsMenuRow(rows, popup, R.string.launcher_settings, () -> startActivityForResult(
-                new Intent(this, LauncherSettingsActivity.class), LAUNCHER_SETTINGS_REQUEST));
+        addSettingsMenuRow(rows, popup, R.string.launcher_settings, this::openLauncherSettings);
         if (moduleCards) addSettingsMenuRow(rows, popup, R.string.module_cards, this::showModuleCards);
         if (dockRow) addSettingsMenuRow(rows, popup, R.string.dock_edit, this::startDockEdit);
         addSettingsMenuRow(rows, popup, R.string.reorder, this::toggleReorder);
