@@ -167,6 +167,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean reordering;
     /** Key of the tile being carried in reorder mode, or null. */
     private String movingKey;
+    /** OK is still held from the long press that started reorder mode: its release must not drop the tile. */
+    private boolean okHeldFromLongPress;
     /** Tile order when reorder mode started, to save only when something moved. */
     private List<String> orderAtStart;
     private View btnReorder;
@@ -725,6 +727,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         boolean ok = code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER
                 || code == KeyEvent.KEYCODE_NUMPAD_ENTER;
         boolean back = code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE;
+        if (okHeldFromLongPress && ok) {
+            if (!down) okHeldFromLongPress = false;
+            return true;   // the OK that was held to start the mode: the tile stays picked up
+        }
         if (movingKey != null) {
             switch (code) {
                 case KeyEvent.KEYCODE_DPAD_LEFT:
@@ -768,6 +774,20 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         if (!beginReorder()) return;
         focusTile(Math.max(0, Math.min(lastFocused, adapter.movableCount() - 1)));
+        Toast.makeText(this, R.string.reorder_hint, Toast.LENGTH_LONG).show();
+    }
+
+    /** OK held on a tile: reorder mode starts with that tile already picked up, so the arrows move it at once. */
+    @Override
+    public void onTileLongPressed(int position) {
+        if (reordering || position >= adapter.movableCount()) return;   // the "Default home" tile stays put
+        String key = adapter.keyAt(position);
+        if (!beginReorder()) return;
+        int pos = adapter.positionOf(key);   // beginReorder can reload the tiles when the dock had empty slots
+        if (pos < 0) return;
+        if (pos != position) focusTile(pos);
+        okHeldFromLongPress = true;
+        pickUp(pos);
         Toast.makeText(this, R.string.reorder_hint, Toast.LENGTH_LONG).show();
     }
 
@@ -882,6 +902,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** Ends the mode and saves the order if it changed since the mode started. */
     private void endReorder() {
         if (!reordering) return;
+        okHeldFromLongPress = false;
         dockEditing = false;
         dockEditSlot = -1;
         drop();

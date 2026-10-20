@@ -309,6 +309,9 @@ the install script finds `~/Android/Sdk` and the `java` on your PATH.
   `tools/tv.py 'settings put secure screensaver_components com.gathin.tvhome/.ClockDream; settings put secure screensaver_enabled 1'`
 - **Remote keys**: an optional accessibility service keeps the remote's Input button working on Google TV (`INPUT_KEY_SERVICE=1` at install) and can bring back other buttons only the stock launcher answered, such as the YouTube button (`app_keys` and `input_key_keycodes`, in `config.xml` or a theme; `HOME_KEY_SERVICE=1` reads `app_keys` too), another fixes sticks whose Home key sends ALL_APPS and opens Settings from the remote's gear button, even one Android does not map (`HOME_KEY_SERVICE=1`, scancodes or keycodes in `config.xml`). With `settings_key_panel` the gear opens a [small quick settings panel](docs/quick-settings-panel.jpg) instead, over Home or any app: TV settings, Display, Network, Apps and Launcher settings.
 - **Navigation** is deliberate: Up and Down move one row, the top buttons never fall through to tiles and Down from them returns to the dock tile you came from, the last focused app is remembered, and installing or removing an app refreshes the tiles while Home is open.
+- **Reorder**: hold OK on any tile, dock or grid, to pick it up; the arrows move it, OK or Back puts it down, and in
+  that mode a short OK picks up the next one. Back with nothing picked up saves the order. The same mode is in the
+  Settings long-press menu. An app's info page (disable, uninstall) is in the TV's Settings, under Apps.
 - **Artwork**: app banners load at xhdpi or better, so low-density TV UIs do not downsample them before the focus zoom.
 
 ## Restoring your TV
